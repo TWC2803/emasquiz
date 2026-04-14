@@ -601,33 +601,21 @@
 
 <!-- QUIZ -->
 <div id="quiz-screen">
-  <div class="topbar">
+  <div class="topbar" id="main-topbar">
     <div class="topbar-brand"><em>e.MAS</em> Quiz</div>
     <div id="topbar-name" style="font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;flex-shrink:0;"></div>
-    <div class="score-chip"><strong id="score-correct">0</strong> / <strong id="score-answered">0</strong> answered</div>
+    <div class="score-chip" id="score-chip"><strong id="score-correct">0</strong> / <strong id="score-answered">0</strong> answered</div>
     <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
-    <div class="timer-wrap">
+    <div class="timer-wrap" id="timer-wrap">
       <div class="timer-dot" id="timer-dot"></div>
       <span class="timer-val" id="timer-val">30:00</span>
     </div>
-    <button class="reset-link" onclick="confirmReset()">↺ Reset</button>
+    <div id="result-chip" style="display:none;font-size:13px;font-weight:600;padding:4px 12px;border-radius:100px;white-space:nowrap;"></div>
+    <button class="reset-link" id="reset-link" onclick="confirmReset()">↺ Reset</button>
+    <button class="reset-link" id="start-again-link" style="display:none;" onclick="doReset()">Start again</button>
+    <button class="reset-link" id="back-start-link" style="display:none;" onclick="goSplash()">Back to start</button>
   </div>
   <div class="quiz-body" id="quiz-body"></div>
-</div>
-
-<!-- REVIEW SCREEN -->
-<div id="review-screen" style="display:none;">
-  <div id="review-bar">
-    <span class="review-label">Review</span>
-    <span class="review-score-chip"><strong id="rev-score">0/35</strong> &nbsp;·&nbsp; <strong id="rev-pct">0%</strong></span>
-    <div class="review-legend">
-      <span class="legend-item"><span class="legend-dot" style="background:var(--green);"></span>Correct</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--red);"></span>Wrong</span>
-      <span class="legend-item"><span class="legend-dot" style="background:rgba(255,255,255,0.18);"></span>Skipped</span>
-    </div>
-    <button class="back-btn" onclick="closeReview()">← Results</button>
-  </div>
-  <div class="quiz-body" id="review-body"></div>
 </div>
 
 <!-- OVERLAY: App switch / reset -->
@@ -640,23 +628,7 @@
   </div>
 </div>
 
-<!-- OVERLAY: Summary -->
-<div class="overlay" id="summary-overlay">
-  <div class="overlay-card">
-    <div class="overlay-icon icon-done">🎯</div>
-    <div class="overlay-title" id="sum-reason">Quiz complete!</div>
-    <div class="big-score" id="sum-score">0/35</div>
-    <div class="score-meta" id="sum-pct">0% · 0 answered</div>
-    <div class="grade-badge" id="sum-grade">—</div>
-    <div class="section-scores" id="section-scores"></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;justify-content:center;gap:6px;">
-      <span id="redirect-dots" style="color:var(--accent);">●●●</span>
-      <span>Reviewing answers in a moment...</span>
-    </div>
-    <button class="overlay-btn" onclick="doReset()">Start again</button>
-    <button class="overlay-btn-ghost" onclick="goSplash()">Back to start</button>
-  </div>
-</div>
+
 
 <script>
 const TOTAL_SECS = 30 * 60;
@@ -739,7 +711,6 @@ function goSplash() {
   clearInterval(timerInterval);
   quizActive = false;
   document.getElementById('quiz-screen').style.display = 'none';
-  document.getElementById('review-screen').style.display = 'none';
   document.getElementById('splash').style.display = 'flex';
   const tn = document.getElementById('topbar-name');
   if (tn) tn.textContent = '';
@@ -842,7 +813,7 @@ function selectAnswer(qi, oi) {
   if (state.answered === 35) {
     clearInterval(timerInterval);
     quizActive = false;
-    setTimeout(() => showSummary('Quiz complete!'), 500);
+    showSummary('Quiz complete!');
   }
 }
 
@@ -857,36 +828,35 @@ function showSummary(reason) {
   const pct = Math.round((state.correct / 35) * 100);
   const pName = document.getElementById('participant-name');
   const nameStr = pName ? pName.value.trim() : '';
-  document.getElementById('sum-reason').textContent = nameStr ? nameStr + ' — ' + reason : reason;
-  document.getElementById('sum-score').textContent = state.correct + '/35';
-  document.getElementById('sum-pct').textContent = pct + '% correct · ' + state.answered + ' answered';
-  const grade = document.getElementById('sum-grade');
-  if (pct >= 80) { grade.textContent = 'Pass — well done!'; grade.className = 'grade-badge grade-pass'; }
-  else if (pct >= 60) { grade.textContent = 'Near pass — keep studying'; grade.className = 'grade-badge grade-near'; }
-  else { grade.textContent = 'More revision needed'; grade.className = 'grade-badge grade-fail'; }
-  // Section breakdown
-  const sc = document.getElementById('section-scores');
-  sc.innerHTML = '';
-  const shortNames = ['e.MAS 7 Core','e.MAS 5 USP','PHEV Core','PHEV Deep','Comparison','Battery'];
-  sections.forEach((sec, si) => {
-    let secCorrect = 0;
-    sec.qs.forEach(qi => { if (state.answers[qi] === questions[qi].ans) secCorrect++; });
-    const row = document.createElement('div');
-    row.className = 'section-score-row';
-    row.innerHTML = `<span class="sname">${shortNames[si]}</span><span class="sval">${secCorrect}/${sec.qs.length}</span>`;
-    sc.appendChild(row);
-  });
-  showOverlay('summary-overlay');
-  setTimeout(() => {
-    hideOverlay('summary-overlay');
-    document.getElementById('quiz-screen').style.display = 'none';
-    document.getElementById('review-screen').style.display = 'block';
-    buildReview();
-    window.scrollTo(0, 0);
-  }, 2800);
+
+  // Transform topbar into result bar
+  document.getElementById('timer-wrap').style.display = 'none';
+  document.getElementById('score-chip').style.display = 'none';
+  document.getElementById('reset-link').style.display = 'none';
+  document.getElementById('start-again-link').style.display = '';
+  document.getElementById('back-start-link').style.display = '';
+
+  // Name + score in topbar-name
+  const tn = document.getElementById('topbar-name');
+  tn.style.maxWidth = 'none';
+  tn.style.color = 'var(--text)';
+  tn.textContent = (nameStr ? nameStr + '  ·  ' : '') + state.correct + '/35  (' + pct + '%)';
+
+  // Grade chip
+  const chip = document.getElementById('result-chip');
+  chip.style.display = '';
+  if (pct >= 80) { chip.textContent = 'Pass'; chip.style.background = 'var(--green-dim)'; chip.style.color = 'var(--green)'; chip.style.border = '1px solid var(--green-border)'; }
+  else if (pct >= 60) { chip.textContent = 'Near pass'; chip.style.background = 'rgba(245,185,66,0.12)'; chip.style.color = 'var(--amber)'; chip.style.border = '1px solid rgba(245,185,66,0.35)'; }
+  else { chip.textContent = 'Fail'; chip.style.background = 'var(--red-dim)'; chip.style.color = 'var(--red)'; chip.style.border = '1px solid var(--red-border)'; }
+
+  // Progress bar fill to 100%
+  document.getElementById('prog-fill').style.width = '100%';
+  document.getElementById('prog-fill').style.background = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)';
+
+  window.scrollTo(0, 0);
 }
 
-// ── OVERLAYS ──
+
 function showOverlay(id) { document.getElementById(id).classList.add('visible'); }
 function hideOverlay(id) { document.getElementById(id).classList.remove('visible'); }
 
@@ -898,13 +868,28 @@ function confirmReset() {
   showOverlay('warn-overlay');
 }
 
+function restoreTopbar() {
+  document.getElementById('timer-wrap').style.display = '';
+  document.getElementById('score-chip').style.display = '';
+  document.getElementById('reset-link').style.display = '';
+  document.getElementById('start-again-link').style.display = 'none';
+  document.getElementById('back-start-link').style.display = 'none';
+  document.getElementById('result-chip').style.display = 'none';
+  const tn = document.getElementById('topbar-name');
+  const pName = document.getElementById('participant-name');
+  tn.style.maxWidth = '180px';
+  tn.style.color = 'var(--muted)';
+  tn.textContent = pName ? pName.value.trim() : '';
+  document.getElementById('prog-fill').style.background = 'var(--accent)';
+}
+
 function doReset() {
   hideOverlay('warn-overlay');
   hideOverlay('summary-overlay');
-  document.getElementById('review-screen').style.display = 'none';
   document.getElementById('quiz-screen').style.display = 'block';
   document.getElementById('splash').style.display = 'none';
   state = { answers: new Array(35).fill(null), correct: 0, answered: 0 };
+  restoreTopbar();
   renderQuiz();
   startTimer();
   window.scrollTo(0, 0);
@@ -927,24 +912,33 @@ function triggerCheatReset() {
   showOverlay('warn-overlay');
 }
 
-function reviewAnswers() {
-  hideOverlay('summary-overlay');
-  document.getElementById('quiz-screen').style.display = 'none';
-  document.getElementById('review-screen').style.display = 'block';
-  buildReview();
-  window.scrollTo(0, 0);
-}
 
-function closeReview() {
-  document.getElementById('review-screen').style.display = 'none';
-  document.getElementById('quiz-screen').style.display = 'block';
-  showOverlay('summary-overlay');
-}
 
-function buildReview() {
+function buildReview(reason) {
   const pct = Math.round((state.correct / 35) * 100);
   document.getElementById('rev-score').textContent = state.correct + '/35';
   document.getElementById('rev-pct').textContent = pct + '%';
+
+  // Populate result banner
+  const pName = document.getElementById('participant-name');
+  const nameStr = pName ? pName.value.trim() : '';
+  document.getElementById('ban-score').textContent = state.correct + '/35 (' + pct + '%)';
+  const banGrade = document.getElementById('ban-grade');
+  if (pct >= 80) { banGrade.textContent = 'Pass — well done!'; banGrade.style.color = 'var(--green)'; }
+  else if (pct >= 60) { banGrade.textContent = 'Near pass — keep studying'; banGrade.style.color = 'var(--amber)'; }
+  else { banGrade.textContent = 'More revision needed'; banGrade.style.color = 'var(--red)'; }
+  document.getElementById('ban-name').textContent = (nameStr ? nameStr + ' — ' : '') + (reason || 'Quiz complete!');
+  const banSec = document.getElementById('ban-sections');
+  banSec.innerHTML = '';
+  const shortNames = ['e.MAS 7','e.MAS 5','PHEV Core','PHEV Deep','Comparison','Battery'];
+  sections.forEach((sec, si) => {
+    let sc = 0;
+    sec.qs.forEach(qi => { if (state.answers[qi] === questions[qi].ans) sc++; });
+    const chip = document.createElement('div');
+    chip.style.cssText = 'background:var(--surface2);border-radius:6px;padding:5px 8px;font-size:11px;';
+    chip.innerHTML = '<div style="color:var(--muted);margin-bottom:1px;">' + shortNames[si] + '</div><div style="font-weight:600;color:var(--accent);">' + sc + '/' + sec.qs.length + '</div>';
+    banSec.appendChild(chip);
+  });
 
   const body = document.getElementById('review-body');
   body.innerHTML = '';
