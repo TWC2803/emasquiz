@@ -610,10 +610,33 @@
       <div class="timer-dot" id="timer-dot"></div>
       <span class="timer-val" id="timer-val">30:00</span>
     </div>
-    <div id="result-chip" style="display:none;font-size:13px;font-weight:600;padding:4px 12px;border-radius:100px;white-space:nowrap;"></div>
     <button class="reset-link" id="reset-link" onclick="confirmReset()">↺ Reset</button>
     <button class="reset-link" id="start-again-link" style="display:none;" onclick="doReset()">Start again</button>
     <button class="reset-link" id="back-start-link" style="display:none;" onclick="goSplash()">Back to start</button>
+  </div>
+  <!-- Result banner: hidden during quiz, shown after completion -->
+  <div id="result-banner" style="display:none; background:var(--surface); border-bottom:1px solid var(--border2); padding:1.25rem 1.5rem;">
+    <div style="max-width:760px; margin:0 auto; display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Participant</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);" id="ban-name">—</div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border2);flex-shrink:0;"></div>
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Score</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);" id="ban-score">—</div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border2);flex-shrink:0;"></div>
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Result</div>
+        <div style="font-size:15px;font-weight:600;" id="ban-grade">—</div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border2);flex-shrink:0;"></div>
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Time</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);" id="ban-time">—</div>
+      </div>
+    </div>
   </div>
   <div class="quiz-body" id="quiz-body"></div>
 </div>
@@ -829,27 +852,24 @@ function showSummary(reason) {
   const pName = document.getElementById('participant-name');
   const nameStr = pName ? pName.value.trim() : '';
 
-  // Transform topbar into result bar
+  // Hide quiz controls, show action buttons
   document.getElementById('timer-wrap').style.display = 'none';
   document.getElementById('score-chip').style.display = 'none';
   document.getElementById('reset-link').style.display = 'none';
   document.getElementById('start-again-link').style.display = '';
   document.getElementById('back-start-link').style.display = '';
 
-  // Name + score in topbar-name
-  const tn = document.getElementById('topbar-name');
-  tn.style.maxWidth = 'none';
-  tn.style.color = 'var(--text)';
-  tn.textContent = (nameStr ? nameStr + '  ·  ' : '') + state.correct + '/35  (' + pct + '%)';
+  // Fill and show result banner
+  document.getElementById('ban-name').textContent = nameStr || '—';
+  document.getElementById('ban-score').textContent = state.correct + ' / 35  (' + pct + '%)';
+  document.getElementById('ban-time').textContent = reason === "Time's up!" ? "Time's up!" : 'Completed';
+  const gradeEl = document.getElementById('ban-grade');
+  if (pct >= 80) { gradeEl.textContent = 'Pass'; gradeEl.style.color = 'var(--green)'; }
+  else if (pct >= 60) { gradeEl.textContent = 'Near pass'; gradeEl.style.color = 'var(--amber)'; }
+  else { gradeEl.textContent = 'Fail'; gradeEl.style.color = 'var(--red)'; }
+  document.getElementById('result-banner').style.display = 'block';
 
-  // Grade chip
-  const chip = document.getElementById('result-chip');
-  chip.style.display = '';
-  if (pct >= 80) { chip.textContent = 'Pass'; chip.style.background = 'var(--green-dim)'; chip.style.color = 'var(--green)'; chip.style.border = '1px solid var(--green-border)'; }
-  else if (pct >= 60) { chip.textContent = 'Near pass'; chip.style.background = 'rgba(245,185,66,0.12)'; chip.style.color = 'var(--amber)'; chip.style.border = '1px solid rgba(245,185,66,0.35)'; }
-  else { chip.textContent = 'Fail'; chip.style.background = 'var(--red-dim)'; chip.style.color = 'var(--red)'; chip.style.border = '1px solid var(--red-border)'; }
-
-  // Progress bar fill to 100%
+  // Progress bar colour
   document.getElementById('prog-fill').style.width = '100%';
   document.getElementById('prog-fill').style.background = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)';
 
@@ -874,13 +894,12 @@ function restoreTopbar() {
   document.getElementById('reset-link').style.display = '';
   document.getElementById('start-again-link').style.display = 'none';
   document.getElementById('back-start-link').style.display = 'none';
-  document.getElementById('result-chip').style.display = 'none';
+  document.getElementById('result-banner').style.display = 'none';
   const tn = document.getElementById('topbar-name');
   const pName = document.getElementById('participant-name');
-  tn.style.maxWidth = '180px';
-  tn.style.color = 'var(--muted)';
   tn.textContent = pName ? pName.value.trim() : '';
   document.getElementById('prog-fill').style.background = 'var(--accent)';
+  document.getElementById('prog-fill').style.width = '0%';
 }
 
 function doReset() {
